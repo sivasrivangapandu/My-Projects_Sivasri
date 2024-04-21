@@ -1,0 +1,144 @@
+package Pa;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class Sivas {
+    private static Connection connection;
+
+    public static void main(String[] args) {
+        // database connection
+        String dbURL = "jdbc:mysql://localhost:3306/sivani";
+        String dbUser = "root";
+        String dbPassword = "SIVASRI";
+
+        try {
+            connection = DriverManager.getConnection(dbURL, dbUser, dbPassword);
+            System.out.println("Connected to the database");
+
+            SwingUtilities.invokeLater(() -> createAndShowGUI());
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void createAndShowGUI() {
+        JFrame frame = new JFrame("Restaurant Menu");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        ImageIcon mainFrameIcon = new ImageIcon("C:\\Users\\sivas\\OneDrive\\Pictures\\project.jpg");
+        JLabel mainFrameLabel = new JLabel(mainFrameIcon);
+
+        JButton vegButton = new JButton("Veg");
+        JButton nonVegButton = new JButton("Non-Veg");
+
+        vegButton.addActionListener(new MenuButtonListener("Veg"));
+        vegButton.setFocusable(false);
+        nonVegButton.addActionListener(new MenuButtonListener("Non-Veg"));
+        nonVegButton.setFocusable(false);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(vegButton);
+        buttonPanel.add(nonVegButton);
+
+        // Add the image label and button panel to the main frame
+        frame.getContentPane().setLayout(new BorderLayout());
+        frame.getContentPane().add(mainFrameLabel, BorderLayout.CENTER);
+        frame.getContentPane().add(buttonPanel, BorderLayout.SOUTH);
+
+        frame.setSize(500, 500);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+    }
+
+    private static class MenuButtonListener implements ActionListener {
+        private String menuType;
+
+        public MenuButtonListener(String menuType) {
+            this.menuType = menuType;
+        }
+
+        
+        public void actionPerformed(ActionEvent e) {
+            JFrame menuFrame = new JFrame(menuType + " Menu");
+            menuFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+            JComboBox<String> categoryComboBox = new JComboBox<>(new String[]{"Starters", "Soups", "MainCourse"});
+            categoryComboBox.setSelectedItem(null);
+            JButton showMenuButton = new JButton("Show Menu");
+
+            showMenuButton.addActionListener(new ShowMenuButtonListener(menuType, categoryComboBox));
+
+            JPanel panel = new JPanel();
+            panel.add(new JLabel("Select Category:"));
+            panel.add(categoryComboBox);
+            panel.add(showMenuButton);
+
+            menuFrame.getContentPane().add(panel);
+            menuFrame.setSize(300, 100);
+            menuFrame.setLocationRelativeTo(null);
+            menuFrame.setVisible(true);
+        }
+    }
+
+    private static class ShowMenuButtonListener implements ActionListener {
+        private String menuType;
+        private JComboBox<String> categoryComboBox;
+
+        public ShowMenuButtonListener(String menuType, JComboBox<String> categoryComboBox) {
+            this.menuType = menuType;
+            this.categoryComboBox = categoryComboBox;
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            String selectedCategory = (String) categoryComboBox.getSelectedItem();
+            showItems(menuType, selectedCategory);
+        }
+
+        private void showItems(String menuType, String category) {
+            try {
+                // Construct the column name based on menuType and category
+                String columnName;
+                if (menuType.equals("Veg")) {
+                    columnName = "Veg" + category.replace(" ", "");
+                } else if (menuType.equals("Non-Veg")) {
+                    columnName = "NonVeg" + category.replace(" ", "");
+                } else {
+                    return;
+                }
+
+                String query = "SELECT " + columnName + " FROM restaurantmenu";
+                PreparedStatement preparedStatement = connection.prepareStatement(query);
+
+                ResultSet resultSet = preparedStatement.executeQuery();
+
+                JFrame menuItemsFrame = new JFrame(menuType + " - " + category + " Items");
+                menuItemsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+                JTextArea textArea = new JTextArea();
+                while (resultSet.next()) {
+                    String itemName = resultSet.getString(columnName);
+                    textArea.append(itemName + "\n");
+                }
+
+                
+                menuItemsFrame.getContentPane().setLayout(new BorderLayout());
+                menuItemsFrame.getContentPane().add(new JScrollPane(textArea), BorderLayout.CENTER);
+
+                menuItemsFrame.setSize(300, 200);
+                menuItemsFrame.setLocationRelativeTo(null);
+                menuItemsFrame.setVisible(true);
+
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+}
